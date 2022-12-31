@@ -12,10 +12,10 @@ import json
 
 
 class KGEP(object):
-    def __init__(self, args, n_user, n_entity, n_relation, adj_entity, adj_relation):
+    def __init__(self, args, n_AppHead, n_entity, n_relation, adj_entity, adj_relation):
         self._parse_args(args, adj_entity, adj_relation)
         self._build_inputs()
-        self._build_model(n_user, n_entity, n_relation)
+        self._build_model(n_AppHead, n_entity, n_relation)
         self._build_train()
 
     @staticmethod
@@ -44,9 +44,9 @@ class KGEP(object):
 
     def _build_inputs(self):
         #rename to appH_indices
-        self.user_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='user_indices')
+        self.AppH_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='user_indices')
         #rename to appT_indices
-        self.item_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='item_indices')
+        self.AppT_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='item_indices')
         self.labels = tf.placeholder(dtype=tf.float32, shape=[None], name='labels')
 
     def _build_model(self, n_user, n_entity, n_relation):
@@ -56,32 +56,32 @@ class KGEP(object):
         rel_embeddings = data['rel_transfer.weight']
 
         #rename to appH_matrix
-        self.user_emb_matrix = tf.reshape(entity_embeddings, [-1, self.dim])  #same matrix different names
+        self.AppH_emb_matrix = tf.reshape(entity_embeddings, [-1, self.dim])  #same matrix different names
         self.entity_emb_matrix = tf.reshape(entity_embeddings, [-1, self.dim])
         self.relation_emb_matrix = tf.reshape(rel_embeddings, [-1, self.dim])
 
 #        rename to appH_embeddings and appH_emnbeddings
-        self.user_embeddings = tf.nn.embedding_lookup(self.user_emb_matrix, self.user_indices)
-        self.item_embeddings = tf.nn.embedding_lookup(self.entity_emb_matrix, self.item_indices)
+        self.AppH_embeddings = tf.nn.embedding_lookup(self.AppH_emb_matrix, self.AppH_indices)
+        self.AppT_embeddings = tf.nn.embedding_lookup(self.entity_emb_matrix, self.AppT_indices)
 
-        entities, relations = self.get_neighbors(self.item_indices)
+        entities, relations = self.get_neighbors(self.AppT_indices)
         #rename to appT_entities, appT_relations
-        users, u_relationns = self.get_neighbors(self.user_indices)#REPEATING
+        AppHead, AppH_relationns = self.get_neighbors(self.AppH_indices)#REPEATING
 #        print(u_relationns[0])
 
         #print
-        self.r_interact = tf.nn.embedding_lookup(self.relation_emb_matrix, u_relationns[0])
+        self.r_interact = tf.nn.embedding_lookup(self.relation_emb_matrix, AppH_relationns[0])
         self.r_interact = tf.reduce_mean(self.r_interact, axis=1)#Taking mean of the embeddings
         # [batch_size, dim] 16 dimensions mean across dimensions
 
-        self.item_embeddings_agg, self.aggregators = self.aggregate(entities, relations)#same
-        self.user_embeddings_agg, self.u_aggregators = self.aggregate(users, u_relationns)
-        for agg in self.u_aggregators:
+        self.AppT_embeddings_agg, self.aggregators = self.aggregate(entities, relations)#same
+        self.AppH_embeddings_agg, self.AppH_aggregators = self.aggregate(AppHead, AppH_relationns)
+        for agg in self.AppH_aggregators:
             self.aggregators.append(agg)
-        self.item_embeddings_cat = tf.concat([self.item_embeddings, self.item_embeddings_agg], axis=1)
-        self.user_embeddings_cat = tf.concat([self.user_embeddings + self.r_interact, self.user_embeddings_agg], axis=1)
+        self.AppT_embeddings_cat = tf.concat([self.AppT_embeddings, self.AppT_embeddings_agg], axis=1)
+        self.AppH_embeddings_cat = tf.concat([self.AppH_embeddings + self.r_interact, self.AppH_embeddings_agg], axis=1)
         # [batch_size]
-        self.scores = tf.reduce_sum(self.user_embeddings_cat * self.item_embeddings_cat, axis=1)
+        self.scores = tf.reduce_sum(self.AppH_embeddings_cat * self.AppT_embeddings_cat, axis=1)
         self.scores_normalized = tf.sigmoid(self.scores)
 
     def get_neighbors(self, seeds):  # item index
@@ -121,7 +121,7 @@ class KGEP(object):
                 vector = aggregator(self_vectors=entity_vectors[hop],  # items K-hop neighbors
                                     neighbor_vectors=tf.reshape(entity_vectors[hop + 1], shape),#why hop+1 as it is neigbour
                                     neighbor_relations=tf.reshape(relation_vectors[hop], shape),#bfs child parent child of child in child
-                                    user_embeddings=self.user_embeddings)
+                                    AppH_embeddings=self.AppH_embeddings)
                 entity_vectors_next_iter.append(vector)
             entity_vectors = entity_vectors_next_iter
         res = tf.reshape(entity_vectors[0], [self.batch_size, self.dim])
@@ -131,7 +131,7 @@ class KGEP(object):
         self.base_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             labels=self.labels, logits=self.scores))
 
-        self.l2_loss = tf.nn.l2_loss(self.user_emb_matrix) + tf.nn.l2_loss(
+        self.l2_loss = tf.nn.l2_loss(self.AppH_emb_matrix) + tf.nn.l2_loss(
             self.entity_emb_matrix) + tf.nn.l2_loss(self.relation_emb_matrix)
         # self.l2_loss = None
         for aggregator in self.aggregators:
@@ -154,4 +154,4 @@ class KGEP(object):
         return precision, recall
 
     def get_scores(self, sess, feed_dict):
-        return sess.run([self.item_indices, self.scores_normalized], feed_dict)
+        return sess.run([self.AppT_indices, self.scores_normalized], feed_dict)

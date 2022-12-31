@@ -7,13 +7,13 @@ tf.disable_v2_behavior()
 np.random.seed(555)
 tf.set_random_seed(1)
 def train(args, data, show_loss, show_topk):
-    n_user, n_item, n_entity, n_relation = data[0], data[1], data[2], data[3]
+    n_AppHead, n_AppTail, n_entity, n_relation = data[0], data[1], data[2], data[3]
     train_data, eval_data, test_data = data[4], data[5], data[6]
     adj_entity, adj_relation = data[7], data[8]
-    model = KGEP(args, n_user, n_entity, n_relation, adj_entity, adj_relation)
+    model = KGEP(args, n_AppHead, n_entity, n_relation, adj_entity, adj_relation)
 
     # top-K evaluation settings
-    user_list, train_record, test_record, item_set, k_list = topk_settings(show_topk, train_data, test_data, n_item) #it will select 
+    AppHead_list, train_record, test_record, AppTail_set, k_list = topk_settings(show_topk, train_data, test_data, n_AppTail) #it will select 
     #topk from the entire list k=[1,3,5,7] or [10,20,30,40] the v
 
     with tf.Session() as sess:
@@ -41,7 +41,7 @@ def train(args, data, show_loss, show_topk):
             # top-K evaluation
             if show_topk:
                 precision, recall, mapN = topk_eval(
-                    sess, model, user_list, train_record, test_record, item_set, k_list, args.batch_size)
+                    sess, model, AppHead_list, train_record, test_record, AppTail_set, k_list, args.batch_size)
                 print('precision: ', end='')
                 for i in precision:
                     print('%.8f\t' % i, end='')
@@ -58,27 +58,27 @@ def train(args, data, show_loss, show_topk):
 
 def topk_settings(show_topk, train_data, test_data, n_item):
     if show_topk:
-        user_num = 100
+        AppHead_num = 100
 #        k_list = [10, 20, 30, 40]
         k_list = [1,3,5,7]
         #rename to get_App_Record
-        train_record = get_user_record(train_data, True)#get app record  # all positive and negative samples
-        test_record = get_user_record(test_data, False) #get app record  # test set 
+        train_record = get_AppHead_record(train_data, True)#get app record  # all positive and negative samples
+        test_record = get_AppHead_record(test_data, False) #get app record  # test set 
         #all samples of training set and only positive samples of test set are taken FROM get_App_Record
         #rename to AppH_list
-        user_list = list(set(train_record.keys()) & set(test_record.keys()))  # common apps of training set and test set
-        if len(user_list) > user_num:
-            user_list = np.random.choice(user_list, size=user_num, replace=False)
+        AppHead_list = list(set(train_record.keys()) & set(test_record.keys()))  # common apps of training set and test set
+        if len(AppHead_list) > AppHead_num:
+            AppHead_list = np.random.choice(AppHead_list, size=AppHead_num, replace=False)
         #Rename to AppT_list
-        item_set = set(list(range(n_item))) #tail_set or app2_Set or appT_set
-        return user_list, train_record, test_record, item_set, k_list
+        AppTail_set = set(list(range(n_item))) #tail_set or app2_Set or appT_set
+        return AppHead_list, train_record, test_record, AppTail_set, k_list
     else:
         return [None] * 5
 
 
 def get_feed_dict(model, data, start, end):
-    feed_dict = {model.user_indices: data[start:end, 0],
-                 model.item_indices: data[start:end, 1],
+    feed_dict = {model.AppH_indices: data[start:end, 0],
+                 model.AppT_indices: data[start:end, 1],
                  model.labels: data[start:end, 2]}
     return feed_dict
 
@@ -122,8 +122,8 @@ def topk_eval(sess, model, user_list, train_record, test_record, item_set, k_lis
         item_score_map = dict()
         start = 0
         while start + batch_size <= len(test_item_list):
-            items, scores = model.get_scores(sess, {model.user_indices: [user] * batch_size,#user-Daksh [Daksh*5], 
-                                                    model.item_indices: test_item_list[start:start + batch_size]})
+            items, scores = model.get_scores(sess, {model.AppH_indices: [user] * batch_size,#user-Daksh [Daksh*5], 
+                                                    model.AppT_indices: test_item_list[start:start + batch_size]})
             for item, score in zip(items, scores):
                 item_score_map[item] = score#create scoere map
             start += batch_size
@@ -131,8 +131,8 @@ def topk_eval(sess, model, user_list, train_record, test_record, item_set, k_lis
         # padding the last incomplete minibatch if exists
         if start < len(test_item_list):
             items, scores = model.get_scores(
-                sess, {model.user_indices: [user] * batch_size,
-                       model.item_indices: test_item_list[start:] + [test_item_list[-1]] * (
+                sess, {model.AppH_indices: [user] * batch_size,
+                       model.AppT_indices: test_item_list[start:] + [test_item_list[-1]] * (
                                batch_size - len(test_item_list) + start)})
             for item, score in zip(items, scores):
                 item_score_map[item] = score
@@ -158,14 +158,14 @@ def topk_eval(sess, model, user_list, train_record, test_record, item_set, k_lis
     return precisionss, recall, map_1
 
 
-def get_user_record(data, is_train):  # all samples of training set and positive samples of test set are reserved
-    user_history_dict = dict()
+def get_AppHead_record(data, is_train):  # all samples of training set and positive samples of test set are reserved
+    AppHead_history_dict = dict()
     for interaction in data:
-        user = interaction[0]
-        item = interaction[1]
+        AppHead = interaction[0]
+        AppTail = interaction[1]
         label = interaction[2]
         if is_train or label == 1:
-            if user not in user_history_dict:
-                user_history_dict[user] = set()
-            user_history_dict[user].add(item)
-    return user_history_dict
+            if AppHead not in AppHead_history_dict:
+                AppHead_history_dict[AppHead] = set()
+            AppHead_history_dict[AppHead].add(AppTail)
+    return AppHead_history_dict

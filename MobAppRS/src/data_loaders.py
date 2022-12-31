@@ -4,10 +4,10 @@ import os
 
 def load_data(args):
     #rename to n_appH and n_appT
-    n_user, n_app, train_data, eval_data, test_data = load_samples(args)
+    n_AppHead, n_AppTail, train_data, eval_data, test_data = load_samples(args)
     n_entity, n_relation, adj_entity, adj_relation = load_kg(args)  # entity->relation->adjacency entity->Adjacency relation
     print('data loaded.')
-    return n_user, n_app, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, adj_relation
+    return n_AppHead, n_AppTail, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, adj_relation
 
 def load_samples(args):#user->app 0-users 1-apps
     print('reading positive negative file ...')
