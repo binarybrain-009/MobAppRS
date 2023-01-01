@@ -3,6 +3,8 @@ Repository for Mobile based App Recommender System
 
 The file starts at main.py
 
+Run the file using python main.py
+
 **Sample_Extraction.py**
 
 It extracts the positive sample and creates false negative samples for the test set
