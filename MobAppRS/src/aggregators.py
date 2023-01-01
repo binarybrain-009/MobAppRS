@@ -34,7 +34,7 @@ class Aggregator(object):
         # self_vectors: [batch_size, -1, dim]
         # neighbor_vectors: [batch_size, -1, n_neighbor, dim]
         # neighbor_relations: [batch_size, -1, n_neighbor, dim]
-        # user_embeddings: [batch_size, dim]
+        # AppH_embeddings: [batch_size, dim]
         pass
 
     def _mix_neighbor_vectors(self, neighbor_vectors, neighbor_relations, AppH_embeddings):

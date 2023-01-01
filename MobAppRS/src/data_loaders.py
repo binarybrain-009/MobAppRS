@@ -9,7 +9,7 @@ def load_data(args):
     print('data loaded.')
     return n_AppHead, n_AppTail, n_entity, n_relation, train_data, eval_data, test_data, adj_entity, adj_relation
 
-def load_samples(args):#user->app 0-users 1-apps
+def load_samples(args):#AppH->AppT 0-AppH 1-AppTail
     print('reading positive negative file ...')
     sample_file = '../datas' + '/relation_exp1-test'
     if os.path.exists(sample_file + '.npy'):
@@ -19,8 +19,8 @@ def load_samples(args):#user->app 0-users 1-apps
         np.save(sample_file + '.npy', sample_np)
 
     #rename to n_appH and n_appT
-    n_user = len(set(sample_np[:, 0]))#number of apps in head
-    n_app = len(set(sample_np[:, 1]))#number of apps in tail
+    n_AppH = len(set(sample_np[:, 0]))#number of apps in head
+    n_AppT = len(set(sample_np[:, 1]))#number of apps in tail
     train_data, eval_data, test_data = dataset_split(sample_np, args)
 
     temp = list()
@@ -37,7 +37,7 @@ def load_samples(args):#user->app 0-users 1-apps
             temp2.append(i[1])
     temp2 = np.reshape(temp2, [-1, 2])
     np.savetxt("test.txt", temp2, fmt="%d", delimiter='\t')
-    return n_user, n_app, train_data, eval_data, test_data
+    return n_AppH, n_AppT, train_data, eval_data, test_data
 
 
 def dataset_split(sample_np, args):
@@ -108,6 +108,6 @@ def construct_adj(args, kg, entity_num):
         adj_entity[entity] = np.array([neighbors[i][0] for i in sampled_indices])  # 格式为（tail/head, relation）
         adj_relation[entity] = np.array([neighbors[i][1] for i in sampled_indices])
    # sp=0
-    for a in adj_entity:
-           print(a)
+#    for a in adj_entity:
+ #          print(a)
     return adj_entity, adj_relation

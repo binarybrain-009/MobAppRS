@@ -44,12 +44,12 @@ class KGEP(object):
 
     def _build_inputs(self):
         #rename to appH_indices
-        self.AppH_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='user_indices')
+        self.AppH_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='AppH_indices')
         #rename to appT_indices
-        self.AppT_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='item_indices')
+        self.AppT_indices = tf.placeholder(dtype=tf.int64, shape=[None], name='AppT_indices')
         self.labels = tf.placeholder(dtype=tf.float32, shape=[None], name='labels')
 
-    def _build_model(self, n_user, n_entity, n_relation):
+    def _build_model(self, n_AppH, n_entity, n_relation):
         transD = open("../datas/TransD_Pykg2Vec.json", "r")
         data = json.load(transD)
         entity_embeddings = data['ent_transfer.weight']

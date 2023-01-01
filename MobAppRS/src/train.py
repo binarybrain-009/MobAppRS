@@ -56,7 +56,7 @@ def train(args, data, show_loss, show_topk):
                 print('\n')
 
 
-def topk_settings(show_topk, train_data, test_data, n_item):
+def topk_settings(show_topk, train_data, test_data, n_AppTail):
     if show_topk:
         AppHead_num = 100
 #        k_list = [10, 20, 30, 40]
@@ -70,7 +70,7 @@ def topk_settings(show_topk, train_data, test_data, n_item):
         if len(AppHead_list) > AppHead_num:
             AppHead_list = np.random.choice(AppHead_list, size=AppHead_num, replace=False)
         #Rename to AppT_list
-        AppTail_set = set(list(range(n_item))) #tail_set or app2_Set or appT_set
+        AppTail_set = set(list(range(n_AppTail))) #tail_set or app2_Set or appT_set
         return AppHead_list, train_record, test_record, AppTail_set, k_list
     else:
         return [None] * 5
@@ -113,27 +113,27 @@ def maps(rank, ground_truth):
     return result
 
 
-def topk_eval(sess, model, user_list, train_record, test_record, item_set, k_list, batch_size):
+def topk_eval(sess, model, AppH_list, train_record, test_record, AppT_set, k_list, batch_size):
     precision_list = {k: [] for k in k_list}
     recall_list = {k: [] for k in k_list}
     map_list = {k: [] for k in k_list}
-    for user in user_list:
-        test_item_list = list(item_set - train_record[user])#excluding all the apps linked to the user in the training set to create  a test set
+    for app in AppH_list:
+        test_AppT_list = list(AppT_set - train_record[app])#excluding all the apps linked to the App-Daksh in the training set to create  a test set
         item_score_map = dict()
         start = 0
-        while start + batch_size <= len(test_item_list):
-            items, scores = model.get_scores(sess, {model.AppH_indices: [user] * batch_size,#user-Daksh [Daksh*5], 
-                                                    model.AppT_indices: test_item_list[start:start + batch_size]})
+        while start + batch_size <= len(test_AppT_list):
+            items, scores = model.get_scores(sess, {model.AppH_indices: [app] * batch_size,#app-Daksh [Daksh*5], 
+                                                    model.AppT_indices: test_AppT_list[start:start + batch_size]})
             for item, score in zip(items, scores):
                 item_score_map[item] = score#create scoere map
             start += batch_size
 
         # padding the last incomplete minibatch if exists
-        if start < len(test_item_list):
+        if start < len(test_AppT_list):
             items, scores = model.get_scores(
-                sess, {model.AppH_indices: [user] * batch_size,
-                       model.AppT_indices: test_item_list[start:] + [test_item_list[-1]] * (
-                               batch_size - len(test_item_list) + start)})
+                sess, {model.AppH_indices: [app] * batch_size,
+                       model.AppT_indices: test_AppT_list[start:] + [test_AppT_list[-1]] * (
+                               batch_size - len(test_AppT_list) + start)})
             for item, score in zip(items, scores):
                 item_score_map[item] = score
 
@@ -141,15 +141,15 @@ def topk_eval(sess, model, user_list, train_record, test_record, item_set, k_lis
         item_sorted = [i[0] for i in item_score_pair_sorted]#sort by score then take its key  i.e. the item
 
         for k in k_list:#[10, 20, 20, 40]
-            hit_num = len(set(item_sorted[:k]) & test_record[user])  # hit nums
+            hit_num = len(set(item_sorted[:k]) & test_record[app])  # hit nums
             precision_list[k].append(hit_num / k)#(TP/TP+FP) DENOMINATOR ACTUAL RESULTS
-            recall_list[k].append(hit_num / len(test_record[user]))#(TP/TP+FN) Denominator predicted results
+            recall_list[k].append(hit_num / len(test_record[app]))#(TP/TP+FN) Denominator predicted results
             # print(map_list[k])
             # print(" ")
-            # print(  [user])
+            # print(  [app])
 #            print(k-1)
-#            print(maps(item_sorted, test_record[user])[k-1])
-            map_list[k].append(maps(item_sorted, test_record[user])[k-1])
+#            print(maps(item_sorted, test_record[app])[k-1])
+            map_list[k].append(maps(item_sorted, test_record[app])[k-1])
 
 
     precisionss = [np.mean(precision_list[k]) for k in k_list]
