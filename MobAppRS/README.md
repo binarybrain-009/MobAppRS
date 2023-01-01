@@ -4,8 +4,8 @@ Repository for Mobile based App Recommender System
 The file starts at main.py
 Sample_Extraction.py
 It extracts the positive sample and creates false negative samples for the test set
-Main.py
-->It imports train from train module
+1.Main.py
+  -It imports train from train module
 ->Imports load_data from data_loaders module
 Data_loaders.py
 ->load_data- Calls all the functions listed below to return the kg triples and adj matrices
